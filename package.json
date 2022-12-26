@@ -1,6 +1,6 @@
 {
   "name": "trevenant",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Beautiful Opinionated Logging for Node.js ✍️",
   "main": "dist/index.js",
   "type": "commonjs",
@@ -52,5 +52,10 @@
     "typescript": "*"
   },
   "types": "types/index.d.ts",
-  "files": ["dist", "types", "README.md", "LICENSE"]
+  "files": [
+    "dist",
+    "types",
+    "README.md",
+    "LICENSE"
+  ]
 }
