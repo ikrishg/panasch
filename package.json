@@ -39,7 +39,7 @@
     "@semantic-release/release-notes-generator": "14.0.1",
     "@types/node": "20.16.1",
     "@typescript-eslint/eslint-plugin": "8.2.0",
-    "eslint": "9.9.0",
+    "eslint": "9.9.1",
     "eslint-config-standard": "17.1.0",
     "eslint-config-love": "62.0.0",
     "eslint-plugin-import": "2.29.1",
