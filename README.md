@@ -1,12 +1,16 @@
 # Panasch
 
-Zero-dependency structured logger for Node, Bun, Deno, and edge runtimes. Logs go to `console` (no worker threads).
+Zero-dependency structured logger for Node, Bun, Deno, and edge runtimes.
+
+![Panasch logging demo](docs/demo.gif)
 
 **Stage 1:** Pino-style calls, async context + correlation IDs, redaction defaults, optional OpenTelemetry trace hook.
 
-**Stage 2 (shipped):** Token-efficient sinks (`logfmt`, `compact`), duplicate-line summarization, OpenTelemetry-shaped `gen_ai.*` logging helpers (with prompt redaction), in-memory log capture, and an MCP stdio server for SQL-ish queries from Cursor/Claude Code. Agent skill: `skills/panasch-logging/SKILL.md`.
+**Stage 2:** Token-efficient sinks (`logfmt`, `compact`), dedup summarization, `gen_ai.*` helpers, MCP log capture + SQL-ish queries. Skill: `skills/panasch-logging/SKILL.md`.
 
-**Later (Stage 3, not in this repo yet):** Pino/Winston codemod, playground, distribution launch assets, npm publish under the Panasch name.
+**Stage 3 (shipped):** Pino/Winston **codemod**, local **playground**, and README **demo GIF** (regenerate with `yarn generate:demo-gif`).
+
+**Later (not in this repo):** npm publish under the Panasch name, framework default integrations (Hono/Nitro/Nuxt PRs), `llms.txt` / MCP docs server, launch benchmarks + coordinated HN/X post.
 
 ## Install (local package)
 
@@ -37,56 +41,56 @@ runWithContext({ requestId: 'req-1' }, () => {
 })
 ```
 
+## Stage 3: codemod (Pino / Winston)
+
+Best-effort migration — review diffs before committing.
+
+```bash
+yarn build
+yarn codemod --from pino --write ./src
+# or
+yarn codemod --from winston ./src/logger.ts
+```
+
+Patterns covered: `import pino from 'pino'`, `pino()`, `winston.createLogger()`, and similar. Not every transport or plugin API maps to Panasch.
+
+## Stage 3: playground
+
+```bash
+yarn build
+yarn playground
+# open http://localhost:4173/playground/
+```
+
+Try JSON / logfmt / compact output, dedup, and gen_ai logging in the browser.
+
 ## Stage 2: token-efficient output
 
 ```js
 const log = createLogger({
-  format: 'logfmt', // or 'compact' | 'json'
+  format: 'logfmt',
   dedup: true,
-  capture: true // buffer for MCP
+  capture: true
 })
 ```
-
-Subpath API: `import { formatLogfmt, buildEmitPipeline } from 'trevenant/sinks'`
 
 ## Stage 2: gen_ai helpers
 
 ```js
 import { logGenAiChat, logGenAiToolCall } from 'trevenant/ai'
-
-logGenAiChat(log, {
-  model: 'gpt-4',
-  inputTokens: 120,
-  outputTokens: 40,
-  prompt: 'user text…' // redacted in output
-})
-
-logGenAiToolCall(log, {
-  toolName: 'search',
-  callId: 'call-1',
-  arguments: { q: 'docs' }
-})
 ```
-
-Fields follow OpenTelemetry `gen_ai.*` naming (stable chat/usage attributes).
 
 ## Stage 2: MCP log server
 
-Requires optional peer `@modelcontextprotocol/sdk` (included in dev install).
-
 ```bash
-yarn build
-# In your app: createLogger({ capture: true })
 yarn mcp
 ```
 
-Tools: `list_recent_logs`, `query_logs` with queries like:
-
-`SELECT * FROM logs WHERE correlationId = 'req-1' LIMIT 20`
+Requires `@modelcontextprotocol/sdk` and `createLogger({ capture: true })` in your app.
 
 ## Pino-style API, redaction, OpenTelemetry
 
-See prior sections: `log.info(obj, msg)`, `child()`, default redaction, and `setOtelTraceHook` + `createOpenTelemetryTraceHook(api)` with `otel: true`.
+`log.info(obj, msg)`, `child()`, default redaction, optional `setOtelTraceHook` + `otel: true`.
 
 ## Class API (`Panasch`)
 

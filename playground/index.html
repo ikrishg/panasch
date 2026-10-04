@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Panasch playground</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Panasch playground</h1>
+      <p>Try JSON, logfmt, and compact output with dedup and gen_ai fields (runs against the built <code>dist/</code> bundle).</p>
+      <div class="controls">
+        <label>
+          Format
+          <select id="format">
+            <option value="json">json</option>
+            <option value="logfmt">logfmt</option>
+            <option value="compact">compact</option>
+          </select>
+        </label>
+        <label><input type="checkbox" id="dedup" /> dedup</label>
+        <button type="button" id="btn-info">info</button>
+        <button type="button" id="btn-genai">gen_ai chat</button>
+        <button type="button" id="btn-dup">repeat x3</button>
+        <button type="button" id="btn-clear">clear</button>
+      </div>
+      <pre id="output" aria-live="polite"></pre>
+    </main>
+    <script type="module" src="./playground.js"></script>
+  </body>
+</html>

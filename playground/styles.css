@@ -1,0 +1,42 @@
+:root {
+  color-scheme: dark;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: #0f1419;
+  color: #e7ecf3;
+}
+
+body {
+  margin: 0;
+  padding: 1.5rem;
+}
+
+main {
+  max-width: 56rem;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+
+button {
+  cursor: pointer;
+  border: 1px solid #3d4f66;
+  background: #1a2533;
+  color: inherit;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.35rem;
+}
+
+#output {
+  min-height: 12rem;
+  border: 1px solid #2a3647;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #121a24;
+}
