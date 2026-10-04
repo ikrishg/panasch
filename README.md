@@ -1,18 +1,20 @@
 # Panasch
 
-Zero-dependency structured logger for Node, Bun, Deno, and edge runtimes.
+TypeScript-first, zero-runtime-dependency JSON logger for Node, Bun, Deno, and edge runtimes. **No worker threads** and no transport workers—logs serialize synchronously and write to `console` (or your sink) in-process.
 
 ![Panasch logging demo](docs/demo.gif)
 
-**Stage 1:** Pino-style calls, async context + correlation IDs, redaction defaults, optional OpenTelemetry trace hook.
+## Why not Pino or Winston?
 
-**Stage 2:** Token-efficient sinks (`logfmt`, `compact`), dedup summarization, `gen_ai.*` helpers, MCP log capture + SQL-ish queries. Skill: `skills/panasch-logging/SKILL.md`.
+**Pino** is fast on long-lived Node servers, but its **worker-thread transports** do not fit short-lived and edge runtimes (Cloudflare Workers, Vercel Edge). Teams also report **lost or late logs on Lambda** when flushing async transports. Panasch avoids that failure mode by design: no background workers, no separate transport process, no flush race on process exit.
 
-**Stage 3 (shipped):** Pino/Winston **codemod**, local **playground**, and README **demo GIF** (regenerate with `yarn generate:demo-gif`).
+**Winston** brings a large transport ecosystem at the cost of bundle size, complexity, and uneven TypeScript ergonomics. Panasch targets the same structured JSON shape with a smaller surface and first-class TypeScript types.
 
-**Later (not in this repo):** npm publish under the Panasch name, framework default integrations (Hono/Nitro/Nuxt PRs), `llms.txt` / MCP docs server, launch benchmarks + coordinated HN/X post.
+See [ROADMAP.md](./ROADMAP.md) for phased delivery history and what is still planned.
 
 ## Install (local package)
+
+Not published to npm yet. Use a checkout:
 
 ```bash
 git clone https://github.com/ikrishg/panasch.git
@@ -24,77 +26,134 @@ yarn install && yarn build
 npm install /path/to/panasch
 ```
 
-The `package.json` name is still `trevenant` until a release is published.
+## Quick start (TypeScript)
 
-## Quick start
+```typescript
+import { createLogger, runWithContext } from 'panasch'
+import { installNodeContext } from 'panasch/context/node'
 
-```js
-import { createLogger, runWithContext } from 'trevenant'
-import { installNodeContext } from 'trevenant/context/node'
-
-installNodeContext()
+installNodeContext() // Node servers: context survives await
 
 const log = createLogger({ level: 'info', name: 'api' })
 
 runWithContext({ requestId: 'req-1' }, () => {
   log.info({ userId: 'u1' }, 'fetched profile')
+  log.child({ component: 'db' }).debug('query ok')
 })
 ```
 
-## Stage 3: codemod (Pino / Winston)
+## Edge (Cloudflare Workers)
 
-Best-effort migration — review diffs before committing.
+No `installNodeContext`—use `runWithContext` per request (fallback runner keeps context until returned Promises settle):
 
-```bash
-yarn build
-yarn codemod --from pino --write ./src
-# or
-yarn codemod --from winston ./src/logger.ts
+```typescript
+import { createLogger, runWithContext } from 'panasch'
+
+const log = createLogger({ name: 'worker' })
+
+export default {
+  fetch (request: Request): Response {
+    return runWithContext({ requestId: crypto.randomUUID() }, () => {
+      log.info({ path: new URL(request.url).pathname }, 'request')
+      return new Response('ok')
+    })
+  }
+}
 ```
 
-Patterns covered: `import pino from 'pino'`, `pino()`, `winston.createLogger()`, and similar. Not every transport or plugin API maps to Panasch.
+## Deno
 
-## Stage 3: playground
+```typescript
+import { createLogger, runWithContext } from 'npm:panasch@file:///path/to/panasch/dist/index.js'
 
-```bash
-yarn build
-yarn playground
-# open http://localhost:4173/playground/
+const log = createLogger()
+runWithContext({ jobId: '1' }, () => log.info('deno job'))
 ```
 
-Try JSON / logfmt / compact output, dedup, and gen_ai logging in the browser.
+(Adjust the `npm:` path to your local checkout after `yarn build`.)
 
-## Stage 2: token-efficient output
+## Framework hooks (one line each)
 
-```js
-const log = createLogger({
-  format: 'logfmt',
-  dedup: true,
-  capture: true
-})
+**Hono:** `app.use('*', (c, next) => runWithContext({ requestId: c.req.header('x-request-id') ?? crypto.randomUUID() }, () => next()))`
+
+**Fastify:** `fastify.addHook('onRequest', (req, _reply, done) => { runWithContext({ requestId: req.id }, done) })`
+
+**Next.js (App Router middleware):** `return runWithContext({ requestId: request.headers.get('x-request-id') ?? crypto.randomUUID() }, () => NextResponse.next())`
+
+## Pino API compatibility
+
+| Supported | Notes |
+|-----------|--------|
+| `logger.info('msg')` | Same call shape |
+| `logger.info({ key }, 'msg')` | Object-first |
+| `logger.info(err, 'msg')` | `Error` → `err` field |
+| `logger.child({ bindings })` | Merged bindings |
+| Levels `trace` … `fatal` | Numeric `level` in JSON (Pino-compatible values) |
+
+| Not supported | Notes |
+|---------------|--------|
+| `pino.transport()` / worker transports | Use Panasch sinks or your own `sink` |
+| `pino.destination`, multistream | Single `sink` callback |
+| Built-in `pino-pretty` | Use `format: 'logfmt'` or pretty in dev |
+| Pino redact path syntax / serializers | Panasch redact list + `redactRecord` |
+| `logger.level = 'debug'` mutator | Pass `level` to `createLogger` |
+
+Migrate with `yarn codemod --from pino --write ./src` (review diffs).
+
+## Benchmarks (measured)
+
+Run yourself: `yarn build && node scripts/benchmark.mjs` (requires devDependency `pino`).  
+Environment: Node **v22.14.0**, **200k** iterations per cell, Panasch → no-op sink, Pino → `/dev/null` stream. **2026-10-04.**
+
+| Payload | Panasch ops/sec | Pino ops/sec |
+|---------|-----------------|--------------|
+| string message | 219,934 | 1,176,022 |
+| flat object + msg | 118,981 | 904,195 |
+| nested object + msg | 64,991 | 796,892 |
+
+Panasch is slower here; the tradeoff is zero runtime deps, no worker threads, and the same code path on edge and Node. Raw JSON: [docs/benchmark-results.json](./docs/benchmark-results.json).
+
+## Token-efficient output (Stage 2)
+
+```typescript
+const log = createLogger({ format: 'logfmt', dedup: true, capture: true })
 ```
 
-## Stage 2: gen_ai helpers
+## gen_ai helpers
 
-```js
-import { logGenAiChat, logGenAiToolCall } from 'trevenant/ai'
+```typescript
+import { logGenAiChat } from 'panasch/ai'
+
+logGenAiChat(log, { model: 'gpt-4', inputTokens: 120, outputTokens: 40, prompt: '…' })
 ```
 
-## Stage 2: MCP log server
+## MCP log server
 
 ```bash
 yarn mcp
 ```
 
-Requires `@modelcontextprotocol/sdk` and `createLogger({ capture: true })` in your app.
+Requires optional `@modelcontextprotocol/sdk` and `createLogger({ capture: true })`.
 
-## Pino-style API, redaction, OpenTelemetry
+## OpenTelemetry
 
-`log.info(obj, msg)`, `child()`, default redaction, optional `setOtelTraceHook` + `otel: true`.
+**Trace context only:** register `setOtelTraceHook(createOpenTelemetryTraceHook(api))` and `createLogger({ otel: true })`. Panasch does **not** ship an OTLP logs exporter or the experimental OTel Logs SDK.
 
-## Class API (`Panasch`)
+## Codemod & playground
 
-`Panasch` / `Trevenant` remain as a thin chainable wrapper.
+```bash
+yarn codemod --from pino --write ./src
+yarn playground   # http://localhost:4173/playground/
+```
+
+## Class API
+
+```typescript
+import { Panasch } from 'panasch'
+
+const log = new Panasch()
+log.info('hello').success('done')
+```
 
 ## License
 
