@@ -28,7 +28,7 @@ The `package.json` name is still `trevenant` until a release is published.
 import { createLogger, runWithContext } from 'trevenant'
 import { installNodeContext } from 'trevenant/context/node'
 
-installNodeContext() // Node servers: AsyncLocalStorage context
+installNodeContext() // Node: context survives `await` via AsyncLocalStorage
 
 const log = createLogger({ level: 'info', name: 'api' })
 
@@ -38,7 +38,7 @@ runWithContext({ requestId: 'req-1' }, () => {
 })
 ```
 
-Each line is one JSON object. `runWithContext` adds a `correlationId` when you omit one. Context fields are merged into every log in that scope.
+Each line is one JSON object. `runWithContext` adds a `correlationId` when you omit one. Context fields are merged into every log in that scope. On Bun, Deno, and edge runtimes without a custom context runner, install your runtime’s async context or avoid logging after `await` outside `runWithContext`’s synchronous body (the fallback runner keeps context until returned Promises settle).
 
 ## Pino-style API
 

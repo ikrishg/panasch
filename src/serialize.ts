@@ -19,12 +19,12 @@ export function buildLogRecord (
   msg: string | undefined
 ): Record<string, unknown> {
   const merged: Record<string, unknown> = {
-    level: LEVEL_VALUES[level],
-    time: Date.now(),
     ...bindings,
     ...context,
     ...otelFields,
-    ...(obj ?? {})
+    ...(obj ?? {}),
+    level: LEVEL_VALUES[level],
+    time: Date.now()
   }
 
   if (msg !== undefined && msg !== '') {
@@ -39,6 +39,22 @@ export function buildLogRecord (
   return redactRecord(merged, redactPaths)
 }
 
+function jsonReplacer (_key: string, value: unknown): unknown {
+  if (typeof value === 'bigint') {
+    return value.toString()
+  }
+  return value
+}
+
 export function stringifyLogLine (record: Record<string, unknown>): string {
-  return JSON.stringify(record)
+  try {
+    return JSON.stringify(record, jsonReplacer)
+  } catch {
+    return JSON.stringify({
+      level: record.level ?? 50,
+      time: record.time ?? Date.now(),
+      msg: 'Failed to serialize log record',
+      error: 'Unserializable payload'
+    })
+  }
 }

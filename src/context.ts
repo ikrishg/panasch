@@ -19,14 +19,30 @@ export function getContextRunner (): ContextRunner {
   return fallbackRunner
 }
 
+function isThenable (value: unknown): value is Promise<unknown> {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    typeof (value as Promise<unknown>).then === 'function'
+  )
+}
+
 const fallbackRunner: ContextRunner = {
   run<T> (store: LogContext, fn: () => T): T {
     const previous = fallbackStore
     fallbackStore = { ...previous, ...store }
     try {
-      return fn()
-    } finally {
+      const result = fn()
+      if (isThenable(result)) {
+        return result.finally(() => {
+          fallbackStore = previous
+        }) as T
+      }
       fallbackStore = previous
+      return result
+    } catch (error) {
+      fallbackStore = previous
+      throw error
     }
   },
   getStore (): LogContext | undefined {

@@ -36,6 +36,15 @@ describe('createLogger', () => {
     assert.ok(typeof record.correlationId === 'string')
   })
 
+  it('does not let caller fields override level or time', () => {
+    const lines = []
+    const log = createLogger({ sink: (line) => { lines.push(line) } })
+    log.info({ level: 99, time: 1 }, 'override attempt')
+    const record = JSON.parse(lines[0])
+    assert.equal(record.level, 30)
+    assert.notEqual(record.time, 1)
+  })
+
   it('child() adds bindings', () => {
     const lines = []
     const log = createLogger({ sink: (line) => { lines.push(line) } })
