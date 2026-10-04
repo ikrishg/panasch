@@ -1,10 +1,13 @@
 {
   "name": "trevenant",
   "version": "1.0.0",
-  "description": "Zero-dependency structured JSON logger for universal runtimes (Stage 1: Panasch)",
+  "description": "Zero-dependency structured JSON logger with Stage 2 AI-native sinks, gen_ai helpers, and MCP log access",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "panasch-mcp": "./dist/mcp/bin.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -13,13 +16,26 @@
     "./context/node": {
       "types": "./dist/context/node.d.ts",
       "import": "./dist/context/node.js"
+    },
+    "./sinks": {
+      "types": "./dist/sinks/index.d.ts",
+      "import": "./dist/sinks/index.js"
+    },
+    "./ai": {
+      "types": "./dist/ai/index.d.ts",
+      "import": "./dist/ai/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp/index.d.ts",
+      "import": "./dist/mcp/index.js"
     }
   },
   "scripts": {
     "build": "tsc",
     "release": "semantic-release",
     "typecheck": "tsc --noEmit",
-    "test": "yarn build && node --test test/*.test.js"
+    "test": "yarn build && node --test test/*.test.js",
+    "mcp": "node ./dist/mcp/bin.js"
   },
   "repository": {
     "type": "git",
@@ -30,7 +46,9 @@
     "logger",
     "json",
     "edge",
-    "opentelemetry"
+    "opentelemetry",
+    "gen_ai",
+    "mcp"
   ],
   "author": "Krish Gupta <hi@krshkun.co>",
   "license": "MIT",
@@ -38,8 +56,17 @@
     "url": "https://github.com/ikrishg/panasch/issues"
   },
   "homepage": "https://github.com/ikrishg/panasch#readme",
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": "^1.8.0"
+  },
+  "peerDependenciesMeta": {
+    "@modelcontextprotocol/sdk": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@faker-js/faker": "9.8.0",
+    "@modelcontextprotocol/sdk": "1.11.0",
     "@semantic-release/changelog": "6.0.3",
     "@semantic-release/commit-analyzer": "13.0.1",
     "@semantic-release/git": "10.0.1",
@@ -61,6 +88,7 @@
   },
   "files": [
     "dist",
+    "skills",
     "README.md",
     "LICENSE"
   ]

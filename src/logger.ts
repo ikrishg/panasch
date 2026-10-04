@@ -4,6 +4,7 @@ import { getOtelTraceFields } from './otel.js'
 import { DEFAULT_REDACT_PATHS } from './redact.js'
 import { buildLogRecord, stringifyLogLine } from './serialize.js'
 import { type LogSink, getDefaultSink } from './sink.js'
+import { buildEmitPipeline, type DedupOptions, type LogFormat } from './sinks/index.js'
 
 export type Bindings = Record<string, unknown>
 
@@ -13,6 +14,12 @@ export type LoggerOptions = {
   redact?: string[] | false
   otel?: boolean
   sink?: LogSink
+  /** Token-efficient output format (default `json`). */
+  format?: LogFormat
+  /** Summarize consecutive duplicate lines. */
+  dedup?: boolean | DedupOptions
+  /** Keep recent records in memory for the MCP log server. */
+  capture?: boolean
 }
 
 type LogMethod = {
@@ -39,8 +46,17 @@ export function createLogger (options: LoggerOptions = {}): Logger {
   const redactPaths = options.redact === false ? [] : (options.redact ?? DEFAULT_REDACT_PATHS)
   const otel = options.otel ?? false
   const sink = options.sink ?? getDefaultSink()
+  const usePipeline = options.format !== undefined || options.dedup !== undefined || options.capture === true
+  const emit = usePipeline
+    ? buildEmitPipeline({
+        format: options.format,
+        dedup: options.dedup,
+        capture: options.capture,
+        sink
+      })
+    : undefined
 
-  return buildLogger(bindings, level, redactPaths, otel, sink)
+  return buildLogger(bindings, level, redactPaths, otel, sink, emit)
 }
 
 function buildLogger (
@@ -48,7 +64,8 @@ function buildLogger (
   level: number,
   redactPaths: string[],
   otel: boolean,
-  sink: LogSink
+  sink: LogSink,
+  emit?: (record: Record<string, unknown>) => void
 ): Logger {
   const logger: Logger = {
     level,
@@ -65,7 +82,8 @@ function buildLogger (
         level,
         redactPaths,
         otel,
-        sink
+        sink,
+        emit
       )
     }
   }
@@ -86,14 +104,23 @@ function buildLogger (
         msg
       )
       try {
-        sink(stringifyLogLine(record))
+        if (emit !== undefined) {
+          emit(record)
+        } else {
+          sink(stringifyLogLine(record))
+        }
       } catch {
         try {
-          sink(stringifyLogLine({
+          const fallback = stringifyLogLine({
             level: LEVEL_VALUES[methodLevel],
             time: Date.now(),
             msg: 'Failed to emit log record'
-          }))
+          })
+          if (emit !== undefined) {
+            emit(JSON.parse(fallback) as Record<string, unknown>)
+          } else {
+            sink(fallback)
+          }
         } catch {
           // Never throw from logging.
         }
