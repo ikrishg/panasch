@@ -1,117 +1,93 @@
-import pino, { type Level, type Logger, type LoggerOptions } from 'pino'
-import { loadOtelMixin } from './otel'
+import { createLogger, type Logger, type LoggerOptions } from './logger.js'
 
-export type PanaschOptions = {
-  /** Minimum log level (default: `info`). */
-  level?: Level
-  /** Human-readable output instead of JSON lines (default: `false`). */
-  pretty?: boolean
-  /** Include active OpenTelemetry trace/span IDs in each log line (default: `false`). */
-  otel?: boolean
-  /** Extra options forwarded to the underlying pino instance. */
-  pino?: LoggerOptions
-}
+export { createLogger, type Logger, type LoggerOptions }
+export {
+  runWithContext,
+  getLogContext,
+  createCorrelationId,
+  setContextRunner,
+  type LogContext,
+  type ContextRunner
+} from './context.js'
+export { DEFAULT_REDACT_PATHS, redactRecord } from './redact.js'
+export {
+  setOtelTraceHook,
+  createOpenTelemetryTraceHook,
+  type OtelTraceHook
+} from './otel.js'
+export { getDefaultSink, type LogSink } from './sink.js'
+export { type LevelName, LEVEL_VALUES } from './levels.js'
 
-export type PanaschLogger = (message: unknown, ...args: unknown[]) => Panasch
-
+/** Trevenant-era class wrapper with chainable helpers; delegates to the core logger. */
 export class Panasch {
   private readonly _logger: Logger
 
-  readonly debug: PanaschLogger
-  readonly info: PanaschLogger
-  readonly warn: PanaschLogger
-  readonly error: PanaschLogger
-  readonly fatal: PanaschLogger
-  readonly success: PanaschLogger
-
-  constructor (options: PanaschOptions = {}) {
-    const {
-      level = 'info',
-      pretty = false,
-      otel = false,
-      pino: pinoOptions = {}
-    } = options
-
-    const baseOptions: LoggerOptions = {
-      level,
-      ...pinoOptions
-    }
-
-    if (otel) {
-      baseOptions.mixin = loadOtelMixin()
-    }
-
-    if (pretty) {
-      this._logger = pino({
-        ...baseOptions,
-        transport: {
-          target: 'pino-pretty',
-          options: { colorize: true }
-        }
-      })
-    } else {
-      this._logger = pino(baseOptions)
-    }
-
-    this.debug = (message, ...args) => this.write('debug', message, ...args)
-    this.info = (message, ...args) => this.write('info', message, ...args)
-    this.warn = (message, ...args) => this.write('warn', message, ...args)
-    this.error = (message, ...args) => this.write('error', message, ...args)
-    this.fatal = (message, ...args) => this.write('fatal', message, ...args)
-    this.success = (message, ...args) => this.writeSuccess(message, ...args)
+  constructor (options: LoggerOptions = {}) {
+    this._logger = createLogger(options)
   }
 
-  private write (level: Level, message: unknown, ...args: unknown[]): Panasch {
-    this.writeOn(this._logger, level, message, ...args)
+  child (bindings: Record<string, unknown>): Panasch {
+    const panasch = Object.create(Panasch.prototype) as Panasch
+    Object.defineProperty(panasch, '_logger', {
+      value: this._logger.child(bindings),
+      enumerable: false
+    })
+    return panasch
+  }
+
+  debug (message: unknown, ...args: unknown[]): this {
+    this.write('debug', message, ...args)
     return this
   }
 
-  private writeSuccess (message: unknown, ...args: unknown[]): Panasch {
-    this.writeSuccessOn(this._logger, message, ...args)
+  info (message: unknown, ...args: unknown[]): this {
+    this.write('info', message, ...args)
     return this
   }
 
-  private writeOn (
-    logger: Logger,
-    level: Level,
-    message: unknown,
-    ...args: unknown[]
-  ): Panasch {
+  warn (message: unknown, ...args: unknown[]): this {
+    this.write('warn', message, ...args)
+    return this
+  }
+
+  error (message: unknown, ...args: unknown[]): this {
+    this.write('error', message, ...args)
+    return this
+  }
+
+  fatal (message: unknown, ...args: unknown[]): this {
+    this.write('fatal', message, ...args)
+    return this
+  }
+
+  success (message: unknown, ...args: unknown[]): this {
     if (message instanceof Error) {
-      logger[level]({ err: message }, message.message)
+      this._logger.info({ err: message, success: true }, args[0] as string | undefined ?? message.message)
       return this
     }
-
     if (typeof message === 'object' && message !== null) {
-      logger[level](message as Record<string, unknown>, ...args as [string?])
+      this._logger.info({ ...(message as Record<string, unknown>), success: true }, args[0] as string | undefined)
       return this
     }
-
-    logger[level](message as string, ...args as [])
+    this._logger.info({ success: true }, String(message))
     return this
   }
 
-  private writeSuccessOn (
-    logger: Logger,
-    message: unknown,
-    ...args: unknown[]
-  ): Panasch {
+  private write (level: 'debug' | 'info' | 'warn' | 'error' | 'fatal', message: unknown, ...args: unknown[]): void {
+    const msg = args[0] as string | undefined
     if (message instanceof Error) {
-      logger.info({ err: message, success: true }, message.message)
-      return this
+      this._logger[level](message, msg)
+      return
     }
-
     if (typeof message === 'object' && message !== null) {
-      logger.info({ ...(message as Record<string, unknown>), success: true }, ...args as [string?])
-      return this
+      this._logger[level](message as Record<string, unknown>, msg)
+      return
     }
-
-    logger.info({ success: true }, message as string, ...args as [])
-    return this
+    this._logger[level](String(message))
   }
 }
 
-/** @deprecated Use {@link Panasch} — retained for callers still importing the old name. */
+/** @deprecated Use {@link Panasch} or {@link createLogger}. */
 export const Trevenant = Panasch
 
 export default Panasch

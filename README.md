@@ -1,10 +1,12 @@
 # Panasch
 
-Small structured logger for Node.js. It wraps [pino](https://getpino.io/) for JSON log lines by default, with optional pretty printing and OpenTelemetry trace fields.
+Zero-dependency structured JSON logger for Node, Bun, Deno, and edge runtimes. Logs go to `console` (no worker threads, no transports). **Stage 1** ships Pino-style call shapes, async context with correlation IDs, redaction defaults, and an optional OpenTelemetry trace hook.
+
+The **AI-native layer** (token-efficient sinks, `gen_ai.*` helpers, MCP log access) is planned but **not implemented in this release**.
 
 ## Install (local package)
 
-This repo is not published under the Panasch name yet. Install from a checkout:
+Not published to npm under the Panasch name yet. Use a checkout:
 
 ```bash
 git clone https://github.com/ikrishg/panasch.git
@@ -15,52 +17,59 @@ yarn install && yarn build
 In another project:
 
 ```bash
-yarn add file:/path/to/panasch
-# or
 npm install /path/to/panasch
 ```
 
-The npm package name in `package.json` is still `trevenant` until a release is published.
+The `package.json` name is still `trevenant` until a release is published.
 
-## Usage
-
-```js
-const { Panasch } = require('trevenant')
-
-const log = new Panasch()
-
-log.info('server started')
-log.success('job finished')
-log.warn({ userId: 'abc' }, 'rate limited')
-log.error(new Error('connection reset'))
-```
-
-### Options
+## Quick start
 
 ```js
-const log = new Panasch({
-  level: 'debug',
-  pretty: true, // human-readable instead of JSON
-  otel: true,   // add trace_id / span_id when @opentelemetry/api is installed
+import { createLogger, runWithContext } from 'trevenant'
+import { installNodeContext } from 'trevenant/context/node'
+
+installNodeContext() // Node servers: AsyncLocalStorage context
+
+const log = createLogger({ level: 'info', name: 'api' })
+
+runWithContext({ requestId: 'req-1' }, () => {
+  log.info({ userId: 'u1' }, 'fetched profile')
+  log.child({ component: 'db' }).debug('query ok')
 })
 ```
 
-`otel` stays off unless you set it to `true`. When enabled, install `@opentelemetry/api` in your app and run your usual OpenTelemetry SDK setup; Panasch only adds span context to each log line.
+Each line is one JSON object. `runWithContext` adds a `correlationId` when you omit one. Context fields are merged into every log in that scope.
 
-## API
+## Pino-style API
 
-| Method    | Level  | Notes                          |
-| --------- | ------ | ------------------------------ |
-| `debug`   | debug  |                                |
-| `info`    | info   |                                |
-| `success` | info   | adds `"success": true` in JSON |
-| `warn`    | warn   |                                |
-| `error`   | error  | accepts `Error` objects        |
-| `fatal`   | fatal  | accepts `Error` objects        |
+```js
+log.info('plain message')
+log.info({ key: 'value' }, 'with object')
+log.error(err, 'failed') // Error serialized under `err`
+const child = log.child({ requestId: 'abc' })
+```
 
-All methods return the logger instance for chaining.
+## Redaction
 
-`Trevenant` is exported as an alias of `Panasch` for older imports.
+Sensitive keys are redacted by default (`password`, `token`, `authorization`, `apiKey`, `secret`, and similar). Pass `redact: ['customField']` or `redact: false` to override.
+
+## OpenTelemetry (optional)
+
+Off unless you enable it. Panasch does not depend on the experimental OTel logs SDK—only an optional trace hook:
+
+```js
+import * as api from '@opentelemetry/api'
+import { createLogger, setOtelTraceHook, createOpenTelemetryTraceHook } from 'trevenant'
+
+setOtelTraceHook(createOpenTelemetryTraceHook(api))
+const log = createLogger({ otel: true })
+```
+
+Install `@opentelemetry/api` in your app when you use this.
+
+## Class API (`Panasch`)
+
+`Panasch` / `Trevenant` remain as a thin chainable wrapper around the same core logger.
 
 ## License
 

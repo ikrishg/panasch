@@ -1,27 +1,40 @@
-export type OtelMixin = () => Record<string, string | undefined>
+export type OtelTraceHook = () => Record<string, unknown>
 
-/** Load OpenTelemetry trace context for pino `mixin` (only when otel is enabled). */
-export function loadOtelMixin (): OtelMixin {
+let traceHook: OtelTraceHook | undefined
+
+/** Register a hook that returns trace fields for each log line (e.g. from @opentelemetry/api). */
+export function setOtelTraceHook (hook: OtelTraceHook | undefined): void {
+  traceHook = hook
+}
+
+export function getOtelTraceFields (enabled: boolean): Record<string, unknown> {
+  if (!enabled || traceHook === undefined) {
+    return {}
+  }
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { trace, context } = require('@opentelemetry/api') as typeof import('@opentelemetry/api')
-
-    return () => {
-      const span = trace.getSpan(context.active())
-      if (span === undefined) {
-        return {}
-      }
-
-      const { traceId, spanId, traceFlags } = span.spanContext()
-      return {
-        trace_id: traceId,
-        span_id: spanId,
-        trace_flags: `0${traceFlags.toString(16)}`
-      }
-    }
+    return traceHook()
   } catch {
-    throw new Error(
-      'Panasch otel option requires @opentelemetry/api. Install it in your project when enabling otel.'
-    )
+    return {}
+  }
+}
+
+/** Build a hook from an already-imported OpenTelemetry API (no logs SDK dependency). */
+export function createOpenTelemetryTraceHook (
+  api: {
+    trace: { getSpan: (ctx: unknown) => { spanContext: () => { traceId: string, spanId: string, traceFlags: number } } | undefined }
+    context: { active: () => unknown }
+  }
+): OtelTraceHook {
+  return () => {
+    const span = api.trace.getSpan(api.context.active())
+    if (span === undefined) {
+      return {}
+    }
+    const { traceId, spanId, traceFlags } = span.spanContext()
+    return {
+      trace_id: traceId,
+      span_id: spanId,
+      trace_flags: `0${traceFlags.toString(16)}`
+    }
   }
 }
