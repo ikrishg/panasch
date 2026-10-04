@@ -1,62 +1,67 @@
-<!-- markdownlint-disable-next-line -->
-<div align="center"><img height="100px" width="100px" src="https://github.com/krshkun/trevenant/raw/main/.github/assets/trevenant.png"><br><h1>Trevenant</h1><h5>Beautiful Opinionated Logging for Node.js ✍️</h5></div>
+# Panasch
 
-## 🤓 Benefits
+Small structured logger for Node.js. It wraps [pino](https://getpino.io/) for JSON log lines by default, with optional pretty printing and OpenTelemetry trace fields.
 
-- [x] **Beautiful** - Beautifully formatted logs with colors and symbols
-- [x] **Error Handling** - Error handling with stack traces
-- [x] **Readable** - Readable logs with proper indentation
+## Install (local package)
 
-## ❓ Why do I use a logger?
-
-Default logging is not very readable. It's hard to distinguish between different log levels and it's hard to read the stack trace. Trevenant fixes this by providing a beautiful and readable logging experience.
-
-`console.log` just dumps the data to the console. Trevenant provides a structured logging experience by providing a consistent format for all the logs.
-
-## 🌟 Installation
-
-There are various ways to install trevenant. Like package managers, content delivery networks, local copies...
-
-### 📦 Package Managers
-
-#### 💝 **NPM** ![Npm Downloads](https://img.shields.io/npm/dt/trevenant?style=flat-square)
+This repo is not published under the Panasch name yet. Install from a checkout:
 
 ```bash
-npm install trevenant
+git clone https://github.com/ikrishg/panasch.git
+cd panasch
+yarn install && yarn build
 ```
 
-#### 🐱**Yarn** ![Yarn Downloads](https://img.shields.io/npm/dt/trevenant?style=flat-square)
+In another project:
 
 ```bash
-yarn add trevenant
+yarn add file:/path/to/panasch
+# or
+npm install /path/to/panasch
 ```
 
-## ✨ Usage
+The npm package name in `package.json` is still `trevenant` until a release is published.
 
-Trevenant is a simple logger. It provides a simple API to log messages.
+## Usage
 
 ```js
-const { Trevenant } = require('trevenant')
+const { Panasch } = require('trevenant')
 
-const logger = new Trevenant()
+const log = new Panasch()
 
-logger.info('Hello World!')
-
-// Other log levels
-
-logger.debug('Hello World!')
-logger.success('Hello World!')
-logger.warn('Hello World!')
-logger.error('Hello World!')
-logger.fatal(new Error('Errrorrilla'))
+log.info('server started')
+log.success('job finished')
+log.warn({ userId: 'abc' }, 'rate limited')
+log.error(new Error('connection reset'))
 ```
 
-## 📞 We're Ready To Support
+### Options
 
-* [ ] Discord server (Coming Soon)
-* [x] [GitHub discussions](https://github.com/krshkun/trevenant/discussions)
-* [x] [Bug handler](https://github.com/krshkun/trevenant/issues)
+```js
+const log = new Panasch({
+  level: 'debug',
+  pretty: true, // human-readable instead of JSON
+  otel: true,   // add trace_id / span_id when @opentelemetry/api is installed
+})
+```
 
-## ❤ Thanks to our supporters
+`otel` stays off unless you set it to `true`. When enabled, install `@opentelemetry/api` in your app and run your usual OpenTelemetry SDK setup; Panasch only adds span context to each log line.
 
-[![GitHub Stargazers](https://reporoster.com/stars/krshkun/trevenant)](https://github.com/krshkun/trevenant/stargazers)
+## API
+
+| Method    | Level  | Notes                          |
+| --------- | ------ | ------------------------------ |
+| `debug`   | debug  |                                |
+| `info`    | info   |                                |
+| `success` | info   | adds `"success": true` in JSON |
+| `warn`    | warn   |                                |
+| `error`   | error  | accepts `Error` objects        |
+| `fatal`   | fatal  | accepts `Error` objects        |
+
+All methods return the logger instance for chaining.
+
+`Trevenant` is exported as an alias of `Panasch` for older imports.
+
+## License
+
+MIT
