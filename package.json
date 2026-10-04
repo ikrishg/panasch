@@ -1,5 +1,5 @@
 {
-  "name": "trevenant",
+  "name": "panasch",
   "version": "1.0.0",
   "description": "Zero-dependency structured JSON logger with Stage 2 AI-native sinks, gen_ai helpers, and MCP log access",
   "type": "module",
@@ -39,7 +39,8 @@
     "mcp": "node ./dist/mcp/bin.js",
     "codemod": "node ./codemod/index.mjs",
     "playground": "node ./playground/serve.mjs",
-    "generate:demo-gif": "bash ./scripts/generate-demo-gif.sh"
+    "generate:demo-gif": "bash ./scripts/generate-demo-gif.sh",
+    "benchmark": "yarn build && node scripts/benchmark.mjs"
   },
   "repository": {
     "type": "git",
@@ -80,11 +81,12 @@
     "@types/node": "22.15.18",
     "@typescript-eslint/eslint-plugin": "8.59.1",
     "eslint": "9.26.0",
-    "eslint-config-standard": "17.1.0",
     "eslint-config-love": "119.0.0",
+    "eslint-config-standard": "17.1.0",
     "eslint-plugin-import": "2.32.0",
     "eslint-plugin-n": "17.24.0",
     "eslint-plugin-promise": "7.3.0",
+    "pino": "9.6.0",
     "prettier": "3.8.3",
     "prettier-config-standard": "7.0.0",
     "semantic-release": "24.2.3",
@@ -97,6 +99,7 @@
     "docs",
     "skills",
     "README.md",
+    "ROADMAP.md",
     "LICENSE"
   ]
 }

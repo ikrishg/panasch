@@ -8,11 +8,11 @@ export function migrateFromPino (source) {
 
   out = out.replace(
     /import\s+pino\s+from\s+['"]pino['"]\s*;?/g,
-    "import { createLogger } from 'trevenant';"
+    "import { createLogger } from 'panasch';"
   )
   out = out.replace(
     /import\s*\{\s*pino\s*\}\s*from\s+['"]pino['"]\s*;?/g,
-    "import { createLogger } from 'trevenant';"
+    "import { createLogger } from 'panasch';"
   )
   out = out.replace(
     /const\s+(\w+)\s*=\s*pino\s*\(/g,
@@ -35,11 +35,11 @@ export function migrateFromWinston (source) {
 
   out = out.replace(
     /import\s+winston\s+from\s+['"]winston['"]\s*;?/g,
-    "import { createLogger } from 'trevenant';"
+    "import { createLogger } from 'panasch';"
   )
   out = out.replace(
     /import\s*\{\s*createLogger\s+as\s+winstonCreateLogger\s*\}\s*from\s+['"]winston['"]\s*;?/g,
-    "import { createLogger } from 'trevenant';"
+    "import { createLogger } from 'panasch';"
   )
   out = out.replace(
     /winston\.createLogger\s*\(/g,

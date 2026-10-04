@@ -1,0 +1,11 @@
+{
+  "node": "v22.14.0",
+  "date": "2026-10-04",
+  "iterations": 200000,
+  "method": "scripts/benchmark.mjs — Panasch no-op sink vs Pino to /dev/null",
+  "rows": [
+    { "payload": "string", "panasch_ops_per_sec": 219934, "pino_ops_per_sec": 1176022 },
+    { "payload": "flat object + msg", "panasch_ops_per_sec": 118981, "pino_ops_per_sec": 904195 },
+    { "payload": "nested object + msg", "panasch_ops_per_sec": 64991, "pino_ops_per_sec": 796892 }
+  ]
+}

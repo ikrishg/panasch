@@ -18,7 +18,7 @@ export {
 export { getDefaultSink, type LogSink } from './sink.js'
 export { type LevelName, LEVEL_VALUES } from './levels.js'
 
-/** Trevenant-era class wrapper with chainable helpers; delegates to the core logger. */
+/** Chainable class wrapper; delegates to the core logger. */
 export class Panasch {
   private readonly _logger: Logger
 
@@ -86,8 +86,5 @@ export class Panasch {
     this._logger[level](String(message))
   }
 }
-
-/** @deprecated Use {@link Panasch} or {@link createLogger}. */
-export const Trevenant = Panasch
 
 export default Panasch
