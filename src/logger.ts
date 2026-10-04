@@ -85,7 +85,19 @@ function buildLogger (
         obj,
         msg
       )
-      sink(stringifyLogLine(record))
+      try {
+        sink(stringifyLogLine(record))
+      } catch {
+        try {
+          sink(stringifyLogLine({
+            level: LEVEL_VALUES[methodLevel],
+            time: Date.now(),
+            msg: 'Failed to emit log record'
+          }))
+        } catch {
+          // Never throw from logging.
+        }
+      }
     }) as LogMethod
     return method
   }

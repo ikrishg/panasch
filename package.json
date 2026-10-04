@@ -17,6 +17,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "release": "semantic-release",
     "typecheck": "tsc --noEmit",
     "test": "yarn build && node --test test/*.test.js"
   },
